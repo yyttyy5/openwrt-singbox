@@ -22,21 +22,24 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path("singbox-manager/src/internal/render/render.go")
           source = path.read_text(encoding="utf-8")
-          old = '"sniff": true,'
-          count = source.count(old)
+          
+          source, count = re.subn(
+          r'(?m)^[ \t*" ]*sniff[ \t]*:[ \t]*true[ \t]*,?[ \t]*\n',
+          '',
+          source)
+
+          print(f"Removed {count} sniff fields")
 
           if count != 3:
               raise SystemExit(
                   f"Expected 3 sniff fields, found {count}; refusing to patch"
               )
 
-          path.write_text(
-              source.replace(old, ""),
-              encoding="utf-8"
-          )
+          path.write_text(source, encoding="utf-8")
           print(f"Removed {count} obsolete fields")
           PY
 
