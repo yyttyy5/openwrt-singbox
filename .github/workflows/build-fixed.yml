@@ -22,25 +22,29 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path("singbox-manager/src/internal/render/render.go")
-          source = path.read_text(encoding="utf-8")
-          
-          source, count = re.subn(
-          r'(?m)^[ \t*" ]*sniff[ \t]*:[ \t]*true[ \t]*,?[ \t]*\n',
-          '',
-          source)
+          lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
 
-          print(f"Removed {count} sniff fields")
+          matched = [
+          line for line in lines
+          if '"sniff"' in line and 'true' in line
+          ]
 
-          if count != 3:
-              raise SystemExit(
-                  f"Expected 3 sniff fields, found {count}; refusing to patch"
-              )
+          print("Found sniff lines:", len(matched))
+          for line in matched:
+            print(repr(line))
 
-          path.write_text(source, encoding="utf-8")
-          print(f"Removed {count} obsolete fields")
+          if len(matched) != 3:
+            raise SystemExit(f"Expected 3 sniff lines, found {len(matched)}")
+
+          lines = [
+            line for line in lines
+            if not ('"sniff"' in line and 'true' in line)
+          ]
+
+          path.write_text("".join(lines), encoding="utf-8")
+          print("Removed 3 sniff fields")
           PY
 
       - name: Build OpenWrt package
