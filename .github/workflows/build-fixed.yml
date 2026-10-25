@@ -1,0 +1,53 @@
+name: Build patched singbox-manager
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: v0.3.0
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential zstd wget perl
+
+      - name: Remove obsolete sniff fields
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("singbox-manager/src/internal/render/render.go")
+          source = path.read_text(encoding="utf-8")
+          old = '"sniff": true,'
+          count = source.count(old)
+
+          if count != 3:
+              raise SystemExit(
+                  f"Expected 3 sniff fields, found {count}; refusing to patch"
+              )
+
+          path.write_text(
+              source.replace(old, ""),
+              encoding="utf-8"
+          )
+          print(f"Removed {count} obsolete fields")
+          PY
+
+      - name: Build OpenWrt package
+        run: make ipk-aarch64_cortexa53
+
+      - name: Upload APK packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: singbox-manager-fixed-openwrt-25.12
+          path: dist/aarch64_cortexa53/*.apk
+          if-no-files-found: error
